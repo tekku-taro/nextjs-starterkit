@@ -1,14 +1,7 @@
 import Link from "next/link"
-import { redirect } from "next/navigation"
-import { auth } from "@/auth"
 import { LoginForm } from "@/components/auth/login-form"
 
 export default async function LoginPage() {
-  const session = await auth()
-
-  if (session) {
-    redirect("/dashboard")
-  }
 
   return (
     <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px] py-12">

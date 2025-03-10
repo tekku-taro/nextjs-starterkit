@@ -1,15 +1,11 @@
-import { redirect } from "next/navigation"
 import { auth } from "@/auth"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { LogOut, User } from "lucide-react"
+import { signOutUser } from "@/app/actions/auth.actions"
 
 export default async function Dashboard() {
   const session = await auth()
-
-  if (!session) {
-    redirect("/login")
-  }
 
   return (
     <div className="container mx-auto py-10">
@@ -21,11 +17,11 @@ export default async function Dashboard() {
             <User className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-lg font-bold">{session.user?.name || "User"}</div>
-            <p className="text-xs text-muted-foreground">{session.user?.email}</p>
+            <div className="text-lg font-bold">{session?.user?.name || "User"}</div>
+            <p className="text-xs text-muted-foreground">{session?.user?.email}</p>
           </CardContent>
           <CardFooter>
-            <form action="/api/auth/signout" method="post">
+            <form action={signOutUser}>
               <Button variant="outline" size="sm">
                 <LogOut className="mr-2 h-4 w-4" />
                 Sign out

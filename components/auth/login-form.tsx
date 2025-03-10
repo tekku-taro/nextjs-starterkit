@@ -1,155 +1,98 @@
 "use client"
 
-import { useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { signIn } from "next-auth/react"
-import { z } from "zod"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
+import { startTransition, useActionState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Icons } from "@/components/ui/icons"
 import { toast } from "sonner"
+import { Label } from "../ui/label"
+import { loginUser } from "@/app/actions/auth.actions"
+import OauthButtons from "./oauth-buttons"
+import { useOAuthSignIn } from "./hooks/useOAuthSignIn"
 
-const loginSchema = z.object({
-  email: z.string().email({ message: "Please enter a valid email address" }),
-  password: z.string().min(8, { message: "Password must be at least 8 characters" }),
-})
-
-type LoginFormValues = z.infer<typeof loginSchema>
 
 export function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const callbackUrl = searchParams.get("callbackUrl") || "/dashboard"
-  const [isLoading, setIsLoading] = useState(false)
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false)
-  const [isGithubLoading, setIsGithubLoading] = useState(false)
+  const { handleOAuthSignIn, isGoogleLoading, isGithubLoading } = useOAuthSignIn();
 
-  const form = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
-  })
-
-  async function onSubmit(data: LoginFormValues) {
-    setIsLoading(true)
-
-    try {
-      const result = await signIn("credentials", {
-        email: data.email,
-        password: data.password,
-        redirect: false,
-      })
-
-      if (!result?.ok) {
-        toast("Something went wrong", {
-          description: "Your sign in request failed. Please try again.",
-          action: {
-            label: "Undo",
-            onClick: () => console.log("Undo"),
-          },
-        })
-        return
-      }
-
-      router.push(callbackUrl)
-      router.refresh()
-    } catch (error) {
-      toast("Something went wrong", {
-        description: "Your sign in request failed. Please try again.",
-        action: {
-          label: "Undo",
-          onClick: () => console.log("Undo"),
-        },
-      })
-    } finally {
-      setIsLoading(false)
+  const [state, action, pending] = useActionState(loginUser, undefined)
+  
+  useEffect(() => {
+    // ログイン成功時の処理
+    if (state?.status === "success") {
+      toast.success("User logged in.", {
+        // description: "User is logged in successfully.",
+        // description: "Please verify your email address before signing in",
+      })      
+      router.push(state.callbackUrl || '/dashboard')
     }
-  }
-
-  const handleGoogleSignIn = async () => {
-    setIsGoogleLoading(true)
-    try {
-      await signIn("google", { callbackUrl })
-    } catch (error) {
-      toast("Something went wrong", {
-        description: "Your sign in request failed. Please try again.",
-        action: {
-          label: "Undo",
-          onClick: () => console.log("Undo"),
-        },
+    
+    // エラー処理
+    if (state?.status === "error" && state?.message) {
+      toast.error("Authentication failed", {
+        description: state.message
       })
-    } finally {
-      setIsGoogleLoading(false)
-    }
+    }  
+  
+  }, [state, router])
+  
+  function handleSubmit(event) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    startTransition(() => action(formData));
   }
-
-  const handleGithubSignIn = async () => {
-    setIsGithubLoading(true)
-    try {
-      await signIn("github", { callbackUrl })
-    } catch (error) {
-      toast("Something went wrong", {
-        description: "Your sign in request failed. Please try again.",
-        action: {
-          label: "Undo",
-          onClick: () => console.log("Undo"),
-        },
-      })
-    } finally {
-      setIsGithubLoading(false)
-    }
-  }
-
+  
   return (
     <div className="grid gap-6">
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <FormField
-            control={form.control}
-            name="email"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Email</FormLabel>
-                <FormControl>
-                  <Input placeholder="name@example.com" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="password"
-            render={({ field }) => (
-              <FormItem>
-                <div className="flex items-center justify-between">
-                  <FormLabel>Password</FormLabel>
-                  <Link
-                    href="/reset-password"
-                    className="text-sm font-medium text-primary underline-offset-4 hover:underline"
-                  >
-                    Forgot password?
-                  </Link>
-                </div>
-                <FormControl>
-                  <Input type="password" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading && <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* callbackUrlを隠しフィールドとして保持 */}
+        <input type="hidden" name="callbackUrl" value={callbackUrl} />
+        <div className='space-y-6'>
+          <div className="space-y-2">
+            <Label htmlFor='email'>Email</Label>
+            <Input
+              id='email'
+              name='email'
+              type='email'
+              required
+              autoComplete='email'
+              placeholder="name@example.com" 
+              aria-invalid={!!state?.errors?.email}
+            />
+            {state?.errors?.email && <p className="text-red-600">{state.errors.email}</p>}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor='password'>Password</Label>
+            <Input
+              id='password'
+              name='password'
+              type='password'
+              required
+              autoComplete='password'
+              aria-invalid={!!state?.errors?.password}
+            />
+            {state?.errors?.password && <p className="text-red-600">{state.errors.password}</p>}
+          </div>
+          <div>
+            <Button type="submit" className="w-full" disabled={pending}>
+            {pending && <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />}
             Sign In
           </Button>
-        </form>
-      </Form>
+          </div>
+
+          <div className='text-sm text-center text-muted-foreground'>
+            Don&apos;t have an account?{' '}
+            <Link href='/register' target='_self' className='link'>
+              Sign Up
+            </Link>
+          </div>
+        </div>
+      </form>
+
       <div className="relative">
         <div className="absolute inset-0 flex items-center">
           <span className="w-full border-t" />
@@ -158,25 +101,11 @@ export function LoginForm() {
           <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-4">
-        <Button variant="outline" onClick={handleGoogleSignIn} disabled={isGoogleLoading}>
-          {isGoogleLoading ? (
-            <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <Icons.google className="mr-2 h-4 w-4" />
-          )}
-          Google
-        </Button>
-        <Button variant="outline" onClick={handleGithubSignIn} disabled={isGithubLoading}>
-          {isGithubLoading ? (
-            <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <Icons.gitHub className="mr-2 h-4 w-4" />
-          )}
-          GitHub
-        </Button>
-      </div>
+      <OauthButtons
+        handleOAuthSignIn={handleOAuthSignIn}
+        isGoogleLoading={isGoogleLoading}
+        isGithubLoading={isGithubLoading}
+      />
     </div>
   )
 }
-
