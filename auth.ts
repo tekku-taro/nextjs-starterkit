@@ -1,4 +1,5 @@
 import GitHub from "next-auth/providers/github"
+import GoogleProvider from "next-auth/providers/google"
 import Credentials from "next-auth/providers/credentials"
 import NextAuth, { NextAuthConfig } from "next-auth"
 import { PrismaAdapter } from "@auth/prisma-adapter"
@@ -15,9 +16,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     error: "/error",
   },  
   providers: [
+    GoogleProvider({
+      clientId: process.env.AUTH_GOOGLE_ID || "",
+      clientSecret: process.env.AUTH_GOOGLE_SECRET || "",
+    }),    
     GitHub({
-      clientId: process.env.AUTH_GITHUB_ID,
-      clientSecret: process.env.AUTH_GITHUB_SECRET,
+      clientId: process.env.AUTH_GITHUB_ID || "",
+      clientSecret: process.env.AUTH_GITHUB_SECRET || "",
     }),
     Credentials({
       credentials: {
@@ -46,7 +51,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
 
         return {
-          id: user.id,
+          id: user.id as unknown as string,
           name: user.name,
           email: user.email,
         }
