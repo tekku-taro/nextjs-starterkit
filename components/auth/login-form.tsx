@@ -66,7 +66,15 @@ export function LoginForm() {
             {state?.errors?.email && <p className="text-red-600">{state.errors.email}</p>}
           </div>
           <div className="space-y-2">
-            <Label htmlFor='password'>Password</Label>
+            <div className="flex justify-between">
+              <Label htmlFor='password'>Password</Label>
+              <Link
+                  href="/reset-password"
+                  className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+                >
+                  Forgot password?
+              </Link>
+            </div>
             <Input
               id='password'
               name='password'

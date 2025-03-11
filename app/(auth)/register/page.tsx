@@ -1,4 +1,3 @@
-import Link from "next/link"
 import { RegisterForm } from "@/components/auth/register-form"
 
 export default async function RegisterPage() {
@@ -10,11 +9,6 @@ export default async function RegisterPage() {
         <p className="text-sm text-muted-foreground">Enter your email below to create your account</p>
       </div>
       <RegisterForm />
-      <p className="px-8 text-center text-sm text-muted-foreground">
-        <Link href="/login" className="hover:text-brand underline underline-offset-4">
-          Already have an account? Sign In
-        </Link>
-      </p>
     </div>
   )
 }

@@ -30,6 +30,7 @@ export function RegisterForm() {
   // 登録成功時の処理
   if (state?.status === "success") {
     toast.success("User registered", {
+      description: state.message
       // description: "User is registered successfully.",
       // description: "Please verify your email address before signing in",
     })

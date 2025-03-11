@@ -3,12 +3,13 @@ import "./globals.css";
 import { SessionProvider } from "next-auth/react";
 import { Inter } from "next/font/google"
 import { Toaster } from "@/components/ui/sonner";
+import { APP_DESCRIPTION, APP_NAME } from "@/lib/constants";
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata:Metadata = {
-  title: "Next.js Authentication Starter",
-  description: "A complete authentication starter kit for Next.js",
+  title: APP_NAME,
+  description: APP_DESCRIPTION,
 }
 
 export default function RootLayout({
