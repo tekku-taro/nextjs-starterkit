@@ -16,7 +16,7 @@ export default auth(async function middleware(request: NextRequest) {
   const protectedRoutes = ["/dashboard"]
 
   // Define auth routes that should redirect to dashboard if already authenticated
-  const authRoutes = ["/login", "/register", "/reset-password"]
+  const authRoutes = ["/login", "/register", "/reset-password", "/new-password"]
 
   const isProtectedRoute = protectedRoutes.some((route) => request.nextUrl.pathname.startsWith(route))
 
