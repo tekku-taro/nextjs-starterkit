@@ -63,7 +63,7 @@ export function LoginForm() {
               placeholder="name@example.com" 
               aria-invalid={!!state?.errors?.email}
             />
-            {state?.errors?.email && <p className="text-red-600">{state.errors.email}</p>}
+            {state?.errors?.email && <p className="text-red-600 text-sm">{state.errors.email}</p>}
           </div>
           <div className="space-y-2">
             <div className="flex justify-between">
@@ -83,7 +83,7 @@ export function LoginForm() {
               autoComplete='password'
               aria-invalid={!!state?.errors?.password}
             />
-            {state?.errors?.password && <p className="text-red-600">{state.errors.password}</p>}
+            {state?.errors?.password && <p className="text-red-600 text-sm">{state.errors.password}</p>}
           </div>
           <div>
             <Button type="submit" className="w-full" disabled={pending}>

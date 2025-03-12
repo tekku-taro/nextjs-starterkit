@@ -48,7 +48,7 @@ export function NewPasswordForm({ token }: { token: string }) {
             required
             autoComplete='password'
           />
-          {state?.errors?.password && <p className="text-red-600">{state.errors.password}</p>}           
+          {state?.errors?.password && <p className="text-red-600 text-sm">{state.errors.password}</p>}           
         </div>
         <div className="space-y-2">
           <Label htmlFor='confirmPassword'>Confirm New Password</Label>
@@ -61,7 +61,7 @@ export function NewPasswordForm({ token }: { token: string }) {
           />
           {state?.errors?.confirmPassword && (
               <div>
-                <ul className="text-red-600">
+                <ul className="text-red-600 text-sm">
                   {state.errors.confirmPassword.map((error) => (
                     <li key={error}>{error}</li>
                   ))}

@@ -55,7 +55,7 @@ export function VerifyEmailForm() {
             placeholder="123456"
             aria-invalid={!!state?.errors?.code}
           />
-          {state?.errors?.code && <p className="text-red-600">{state.errors.code}</p>}
+          {state?.errors?.code && <p className="text-red-600 text-sm">{state.errors.code}</p>}
         </div>
         <div>
           <Button type="submit" className="w-full" disabled={pending}>

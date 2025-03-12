@@ -45,7 +45,7 @@ export function ResetPasswordForm() {
             placeholder="name@example.com" 
             aria-invalid={!!state?.errors?.email}
           />
-          {state?.errors?.email && <p className="text-red-600">{state.errors.email}</p>}
+          {state?.errors?.email && <p className="text-red-600 text-sm">{state.errors.email}</p>}
         </div>
         <div>
           <Button type="submit" className="w-full" disabled={pending}>

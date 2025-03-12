@@ -72,7 +72,7 @@ export function RegisterForm() {
               autoComplete='name'
               placeholder="John Doe"
             />
-            {state?.errors?.name && <p className="text-red-600">{state.errors.name}</p>}
+            {state?.errors?.name && <p className="text-red-600 text-sm">{state.errors.name}</p>}
           </div>
           <div className="space-y-2">
             <Label htmlFor='email'>Email</Label>
@@ -84,7 +84,7 @@ export function RegisterForm() {
               autoComplete='email'
               placeholder="name@example.com"
             />
-            {state?.errors?.email && <p className="text-red-600">{state.errors.email}</p>}
+            {state?.errors?.email && <p className="text-red-600 text-sm">{state.errors.email}</p>}
           </div>
           <div className="space-y-2">
             <Label htmlFor='password'>Password</Label>
@@ -95,7 +95,7 @@ export function RegisterForm() {
               required
               autoComplete='password'
             />
-            {state?.errors?.password && <p className="text-red-600">{state.errors.password}</p>}           
+            {state?.errors?.password && <p className="text-red-600 text-sm">{state.errors.password}</p>}           
           </div>
           <div className="space-y-2">
             <Label htmlFor='confirmPassword'>ConfirmPassword</Label>
@@ -108,7 +108,7 @@ export function RegisterForm() {
             />
             {state?.errors?.confirmPassword && (
                 <div>
-                  <ul className="text-red-600">
+                  <ul className="text-red-600 text-sm">
                     {state.errors.confirmPassword.map((error) => (
                       <li key={error}>{error}</li>
                     ))}
