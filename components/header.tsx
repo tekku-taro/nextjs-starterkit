@@ -1,3 +1,5 @@
+'use client'
+
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { 
@@ -10,11 +12,11 @@ import {
 import { LogOut, User } from "lucide-react"
 import { signOutUser } from "@/app/actions/auth.actions"
 import Link from "next/link"
-import { auth } from "@/auth"
 import { BRAND_NAME } from "@/lib/constants"
+import { useSession } from "next-auth/react"
 
-const Header = async () => {  
-  const session = await auth()
+const Header = () => {  
+  const {data:session} = useSession()
 
   return ( 
     <header className="border-b">
