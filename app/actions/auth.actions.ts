@@ -52,6 +52,12 @@ export type FormState =
   {
       status?: string;  
       callbackUrl?: string;
+      data?:{
+        name?: string | null | undefined;
+        username?: string | null | undefined;
+        password?: string | null | undefined
+        image?: string | null | undefined;
+      } | null;      
       errors?: {
         name?: string[]
         email?: string[]
@@ -149,11 +155,19 @@ export async function registerUser(prevState:FormState, formData:FormData) {
         redirect: false,
       })
 
+      const loggedInUser = await prisma.user.findFirst({
+        where: {
+          email: email,
+        }
+      })
+  
+      // 成功
       return {
-        status: "success", 
+        status: "success",
         message: 'User registered successfully',
-        callbackUrl
-      }    
+        callbackUrl,
+        data: loggedInUser
+      }   
     }
   } catch (error) {
     if (isRedirectError(error)) {
@@ -194,13 +208,21 @@ export async function loginUser(prevState:FormState, formData:FormData) {
       email,
       password,
       redirect: false,
+    })  
+
+
+    const loggedInUser = await prisma.user.findFirst({
+      where: {
+        email: email,
+      }
     })
-    
+
     // 成功
     return {
       status: "success",
       message: 'User logged in successfully',
-      callbackUrl
+      callbackUrl,
+      data: loggedInUser
     }
   } catch (error) {
     if (isRedirectError(error)) {
@@ -428,6 +450,8 @@ export async function updatePasswordWithToken(prevState:FormState, formData:Form
 
 // Sign user out
 export async function signOutUser() { 
-  await signOut();
+  await signOut({
+    redirect: false,
+  });
   redirect('/login');
 }

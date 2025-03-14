@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { startTransition, useActionState, useEffect } from "react"
+import { FormEvent, startTransition, useActionState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Icons } from "@/components/ui/icons"
@@ -11,10 +11,12 @@ import { Label } from "../ui/label"
 import { loginUser } from "@/app/actions/auth.actions"
 import OauthButtons from "./oauth-buttons"
 import { useOAuthSignIn } from "./hooks/useOAuthSignIn"
+import { useSession } from "next-auth/react"
 
 
 export function LoginForm() {
   const router = useRouter()
+  const session = useSession();
   const searchParams = useSearchParams()
   const callbackUrl = searchParams.get("callbackUrl") || "/dashboard"
   const { handleOAuthSignIn, isGoogleLoading, isGithubLoading } = useOAuthSignIn();
@@ -27,7 +29,16 @@ export function LoginForm() {
       toast.success("User logged in.", {
         // description: "User is logged in successfully.",
         // description: "Please verify your email address before signing in",
-      })      
+      })
+      const {data:user} = state;
+      session.update({
+        name: user?.name,
+        email: user?.email,
+        role: user?.role,
+        image: user?.image,
+        isOAuth: false
+      });
+      state.status = ''
       router.push(state.callbackUrl || '/dashboard')
     }
     
@@ -38,11 +49,11 @@ export function LoginForm() {
       })
     }  
   
-  }, [state, router])
+  }, [state, router, session])
   
-  function handleSubmit(event) {
+  function handleSubmit(event:FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const formData = new FormData(event.target);
+    const formData = new FormData(event.target as HTMLFormElement);
     startTransition(() => action(formData));
   }
   

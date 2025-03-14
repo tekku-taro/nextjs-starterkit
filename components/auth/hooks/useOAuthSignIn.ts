@@ -19,6 +19,7 @@ export function useOAuthSignIn() {
       await signIn(provider, { callbackUrl });
       router.push(callbackUrl);
     } catch (error) {
+      void error;
       toast.error("Something went wrong", {
         description: "Your sign in request failed. Please try again.",
         action: {

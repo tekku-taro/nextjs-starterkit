@@ -9,6 +9,7 @@ import { compare } from "bcryptjs"
  
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
+  secret: process.env.AUTH_SECRET,
   adapter: PrismaAdapter(prisma),
   session:{strategy: 'jwt'},
   pages: {
@@ -49,12 +50,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (!isValidPassword) {
           return null
         }
-
+        
         return {
           id: user.id as unknown as string,
           name: user.name,
           email: user.email,
-          role: user.role
+          role: user.role,
+          image: user.image
         }
       },
     })
@@ -66,7 +68,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.name = user.name
         token.email = user.email
         token.role = user.role
-        token.image = user.image
+        token.image = user.image        
       }
       if (trigger === "update") {
         if(session?.name) {

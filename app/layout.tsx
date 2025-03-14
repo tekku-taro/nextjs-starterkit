@@ -4,6 +4,7 @@ import { SessionProvider } from "next-auth/react";
 import { Inter } from "next/font/google"
 import { Toaster } from "@/components/ui/sonner";
 import { APP_DESCRIPTION, APP_NAME } from "@/lib/constants";
+import { auth } from "@/auth";
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -12,15 +13,17 @@ export const metadata:Metadata = {
   description: APP_DESCRIPTION,
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await auth();
+
   return (
     <html lang="en">
       <body className={inter.className}>
-        <SessionProvider>
+        <SessionProvider session={session}>
           {children}
           <Toaster richColors />
         </SessionProvider>

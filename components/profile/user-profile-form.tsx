@@ -1,7 +1,7 @@
 "use client"
 
 import { Account, User } from "@prisma/client"
-import { startTransition, useActionState, useEffect } from "react"
+import { FormEvent, startTransition, useActionState, useEffect } from "react"
 import { toast } from "sonner"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
@@ -45,9 +45,10 @@ export function UserProfileForm({ user, isOAuth }: UserProfileFormProps) {
       }  
     }, [state, session, router, isOAuth])
 
-  function handleSubmit(event) {
+  function handleSubmit(event:FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const formData = new FormData(event.target);
+    const formData = new FormData(event.target as HTMLFormElement);
+
     startTransition(() => {
       action(formData)
       console.log(state?.status)     

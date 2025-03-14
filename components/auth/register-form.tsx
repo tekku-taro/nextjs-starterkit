@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter, useSearchParams } from "next/navigation"
-import { startTransition, useActionState, useEffect } from "react"
+import { FormEvent, startTransition, useActionState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
@@ -11,11 +11,13 @@ import { Label } from "../ui/label"
 import Link from "next/link"
 import OauthButtons from "./oauth-buttons"
 import { useOAuthSignIn } from "./hooks/useOAuthSignIn"
+import { useSession } from "next-auth/react"
 
 
 
 export function RegisterForm() {
   const router = useRouter()
+  const session = useSession();
   const searchParams = useSearchParams()
   const callbackUrl = searchParams.get('callbackUrl') || '/dashboard'
 
@@ -34,7 +36,15 @@ export function RegisterForm() {
       // description: "User is registered successfully.",
       // description: "Please verify your email address before signing in",
     })
-    
+    const {data:user} = state;
+    session.update({
+      name: user?.name,
+      email: user?.email,
+      role: user?.role,
+      image: user?.image,
+      isOAuth: false
+    });
+    state.status = ''
     // callbackUrlページにリダイレクト
     router.push(state?.callbackUrl || '/dashboard')
   }
@@ -46,13 +56,13 @@ export function RegisterForm() {
     })
   }    
   
-  }, [state, router])
+  }, [state, router, session])
 
 
   
-  function handleSubmit(event) {
+  function handleSubmit(event:FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const formData = new FormData(event.target);
+    const formData = new FormData(event.target as HTMLFormElement);
     startTransition(() => action(formData));
   }
 
