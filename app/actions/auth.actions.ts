@@ -4,11 +4,12 @@ import { prisma } from "@/prisma"
 import { v4 as uuidv4 } from "uuid"
 import { sendPasswordResetEmail, sendVerificationEmail } from "@/lib/email"
 import { z } from "zod"
-import { signIn, signOut } from "@/auth"
+// import { signIn, signOut } from "@/auth"
 import { isRedirectError } from "next/dist/client/components/redirect-error"
 import { redirect } from "next/navigation"
 import appConfig from "@/lib/config"
 import { generateVerificationCode } from "@/lib/utils"
+import { signInWithCredentials, signOut } from "@/lib/smart-auth"
 
 // バリデーションスキーマ
 const loginSchema = z.object({
@@ -149,8 +150,8 @@ export async function registerUser(prevState:FormState, formData:FormData) {
       }
 
     } else {
-      await signIn('credentials', {
-        email: user.email,
+      await signInWithCredentials({
+        email: user.email!,
         password: password,
         redirect: false,
       })
@@ -203,13 +204,12 @@ export async function loginUser(prevState:FormState, formData:FormData) {
   const { email, password } = validatedFields.data
 
   try {
-    // 認証
-    await signIn("credentials", {
-      email,
-      password,
+    // 認証 
+    await signInWithCredentials({
+      email: email,
+      password: password,
       redirect: false,
-    })  
-
+    })
 
     const loggedInUser = await prisma.user.findFirst({
       where: {
@@ -227,6 +227,9 @@ export async function loginUser(prevState:FormState, formData:FormData) {
   } catch (error) {
     if (isRedirectError(error)) {
       throw error;
+    }
+    if(error instanceof Error) {
+      return { status: 'error', message: error.message };
     }
     return { status: 'error', message: 'Invalid email or password' };    
   } 
@@ -453,5 +456,6 @@ export async function signOutUser() {
   await signOut({
     redirect: false,
   });
+
   redirect('/login');
 }

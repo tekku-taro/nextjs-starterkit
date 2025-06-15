@@ -1,94 +1,94 @@
-import GitHub from "next-auth/providers/github"
-import GoogleProvider from "next-auth/providers/google"
-import Credentials from "next-auth/providers/credentials"
-import NextAuth, { NextAuthConfig } from "next-auth"
-import { PrismaAdapter } from "@auth/prisma-adapter"
-import { prisma } from "@/prisma"
-import authConfig from "./auth.config"
-import { compare } from "bcryptjs"
+// import GitHub from "next-auth/providers/github"
+// import GoogleProvider from "next-auth/providers/google"
+// import Credentials from "next-auth/providers/credentials"
+// import NextAuth, { NextAuthConfig } from "next-auth"
+// import { PrismaAdapter } from "@auth/prisma-adapter"
+// import { prisma } from "@/prisma"
+// import authConfig from "./auth.config"
+// import { compare } from "bcryptjs"
  
-export const { handlers, signIn, signOut, auth } = NextAuth({
-  ...authConfig,
-  secret: process.env.AUTH_SECRET,
-  adapter: PrismaAdapter(prisma),
-  session:{strategy: 'jwt'},
-  pages: {
-    signIn: "/login",
-    error: "/error",
-  },  
-  providers: [
-    GoogleProvider({
-      clientId: process.env.AUTH_GOOGLE_ID || "",
-      clientSecret: process.env.AUTH_GOOGLE_SECRET || "",
-    }),    
-    GitHub({
-      clientId: process.env.AUTH_GITHUB_ID || "",
-      clientSecret: process.env.AUTH_GITHUB_SECRET || "",
-    }),
-    Credentials({
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
-      },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          return null
-        }
+// export const { handlers, signIn, signOut, auth } = NextAuth({
+//   ...authConfig,
+//   secret: process.env.AUTH_SECRET,
+//   adapter: PrismaAdapter(prisma),
+//   session:{strategy: 'jwt'},
+//   pages: {
+//     signIn: "/login",
+//     error: "/error",
+//   },  
+//   providers: [
+//     GoogleProvider({
+//       clientId: process.env.AUTH_GOOGLE_ID || "",
+//       clientSecret: process.env.AUTH_GOOGLE_SECRET || "",
+//     }),    
+//     GitHub({
+//       clientId: process.env.AUTH_GITHUB_ID || "",
+//       clientSecret: process.env.AUTH_GITHUB_SECRET || "",
+//     }),
+//     Credentials({
+//       credentials: {
+//         email: { label: "Email", type: "email" },
+//         password: { label: "Password", type: "password" },
+//       },
+//       async authorize(credentials) {
+//         if (!credentials?.email || !credentials?.password) {
+//           return null
+//         }
 
-        const user = await prisma.user.findUnique({
-          where: {
-            email: credentials.email as string,
-          },
-        })
+//         const user = await prisma.user.findUnique({
+//           where: {
+//             email: credentials.email as string,
+//           },
+//         })
 
-        if (!user || !user.password) {
-          return null
-        }
+//         if (!user || !user.password) {
+//           return null
+//         }
 
-        const isValidPassword = await compare(credentials.password as string, user.password)
+//         const isValidPassword = await compare(credentials.password as string, user.password)
 
-        if (!isValidPassword) {
-          return null
-        }
+//         if (!isValidPassword) {
+//           return null
+//         }
         
-        return {
-          id: user.id as unknown as string,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          image: user.image
-        }
-      },
-    })
-  ],
-  callbacks: {
-    async jwt({ token, user, trigger, session }) {
-      if (user) {
-        token.id = user.id
-        token.name = user.name
-        token.email = user.email
-        token.role = user.role
-        token.image = user.image        
-      }
-      if (trigger === "update") {
-        if(session?.name) {
-          token.name = session.name;
-        }
-        if(!session.isOAuth) {
-          token.image = session.image;
-        }
-      }
+//         return {
+//           id: user.id as unknown as string,
+//           name: user.name,
+//           email: user.email,
+//           role: user.role,
+//           image: user.image
+//         }
+//       },
+//     })
+//   ],
+//   callbacks: {
+//     async jwt({ token, user, trigger, session }) {
+//       if (user) {
+//         token.id = user.id
+//         token.name = user.name
+//         token.email = user.email
+//         token.role = user.role
+//         token.image = user.image        
+//       }
+//       if (trigger === "update") {
+//         if(session?.name) {
+//           token.name = session.name;
+//         }
+//         if(!session.isOAuth) {
+//           token.image = session.image;
+//         }
+//       }
 
-      return token
-    },
-    async session({ session, token }) {
-      if (token && session.user) {
-        session.user.id = token.id as string
-        session.user.role = token.role as string
-        session.user.name = token.name
-        session.user.image = token.image as string
-      }
-      return session
-    },
-  },   
-}  satisfies NextAuthConfig)
+//       return token
+//     },
+//     async session({ session, token }) {
+//       if (token && session.user) {
+//         session.user.id = token.id as string
+//         session.user.role = token.role as string
+//         session.user.name = token.name
+//         session.user.image = token.image as string
+//       }
+//       return session
+//     },
+//   },   
+// }  satisfies NextAuthConfig)

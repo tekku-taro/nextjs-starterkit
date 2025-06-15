@@ -13,10 +13,11 @@ import { LogOut, User } from "lucide-react"
 import { signOutUser } from "@/app/actions/auth.actions"
 import Link from "next/link"
 import { BRAND_NAME } from "@/lib/constants"
-import { useSession } from "next-auth/react"
+import { useSession } from "@/lib/smart-auth/react"
+// import { useSession } from "next-auth/react"
 
 const Header = () => {  
-  const {data:session} = useSession()
+  const {session} = useSession()
 
   return ( 
     <header className="border-b">

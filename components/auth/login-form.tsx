@@ -11,7 +11,8 @@ import { Label } from "../ui/label"
 import { loginUser } from "@/app/actions/auth.actions"
 import OauthButtons from "./oauth-buttons"
 import { useOAuthSignIn } from "./hooks/useOAuthSignIn"
-import { useSession } from "next-auth/react"
+import { useSession } from "@/lib/smart-auth/react"
+// import { useSession } from "next-auth/react"
 
 
 export function LoginForm() {
@@ -24,31 +25,26 @@ export function LoginForm() {
   const [state, action, pending] = useActionState(loginUser, undefined)
   
   useEffect(() => {
-    // ログイン成功時の処理
-    if (state?.status === "success") {
-      toast.success("User logged in.", {
-        // description: "User is logged in successfully.",
-        // description: "Please verify your email address before signing in",
-      })
-      const {data:user} = state;
-      session.update({
-        name: user?.name,
-        email: user?.email,
-        role: user?.role,
-        image: user?.image,
-        isOAuth: false
-      });
-      state.status = ''
-      router.push(state.callbackUrl || '/dashboard')
-    }
-    
-    // エラー処理
-    if (state?.status === "error" && state?.message) {
-      toast.error("Authentication failed", {
-        description: state.message
-      })
-    }  
-  
+    const handleEffect = async () => {
+      // ログイン成功時の処理
+      if (state?.status === "success") {
+        toast.success("User logged in.", {
+          // description: "User is logged in successfully.",
+          // description: "Please verify your email address before signing in",
+        });
+
+        // セッション情報を更新
+        await session.refresh(); 
+        router.push(state.callbackUrl || '/dashboard');
+      } else if (state?.status === "error" && state?.message) {
+        // エラー処理
+        toast.error("Authentication failed", {
+          description: state.message,
+        });
+      }
+    };
+
+    handleEffect();
   }, [state, router, session])
   
   function handleSubmit(event:FormEvent<HTMLFormElement>) {

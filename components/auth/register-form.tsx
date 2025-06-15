@@ -11,7 +11,8 @@ import { Label } from "../ui/label"
 import Link from "next/link"
 import OauthButtons from "./oauth-buttons"
 import { useOAuthSignIn } from "./hooks/useOAuthSignIn"
-import { useSession } from "next-auth/react"
+import { useSession } from "@/lib/smart-auth/react"
+// import { useSession } from "next-auth/react"
 
 
 

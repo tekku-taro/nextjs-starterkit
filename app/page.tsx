@@ -1,12 +1,13 @@
-import { auth } from "@/auth"
+// import { auth } from "@/auth"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { APP_DESCRIPTION, APP_NAME } from "@/lib/constants"
 import Footer from "@/components/footer"
 import Header from "@/components/header"
+import { auth } from "@/lib/smart-auth"
 
 export default async function Home() {
-  const session = await auth()
+  const {session} = await auth()
 
   return (
     <div className="flex flex-col min-h-screen">

@@ -1,8 +1,8 @@
-import { NextAuthConfig } from "next-auth";
+// import { NextAuthConfig } from "next-auth";
  
-const authConfig = {
-  providers: [
-  ],
-} satisfies NextAuthConfig
+// const authConfig = {
+//   providers: [
+//   ],
+// } satisfies NextAuthConfig
 
-export default authConfig;
+// export default authConfig;
