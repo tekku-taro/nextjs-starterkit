@@ -7,7 +7,8 @@
 
 ## はじめに
 
-このソフトウェアは、最新の Next.js 15 および NextAuth.js v5 を利用した Next.js スターターキットです。従来のパスワード認証の他にOAuth認証にも対応しています。このスターターキットを使えば、複雑なユーザー認証実装の手間を省き、ウェブアプリケーションの重要な機能の開発にすぐに取り組むことができます。
+このソフトウェアは、最新の Next.js 15 を利用した Next.js スターターキットです。従来のパスワード認証の他にOAuth認証にも対応しています。このスターターキットを使えば、複雑なユーザー認証実装の手間を省き、ウェブアプリケーションの重要な機能の開発にすぐに取り組むことができます。
+従来は NextAuth.js v5 を利用していましたが、現在は独自に開発したカスタム認証ライブラリ「SmartAuth」に移行しています。
 
 ## 特徴
 
@@ -26,11 +27,31 @@
 
 - Next.js 15 (App Router)
 - TypeScript
-- NextAuth.js v5
+- SmartAuth（独自実装のカスタム認証ライブラリ）
 - Prisma ORM
 - Tailwindcss
 - shadcn/ui
   
+## 認証について
+
+このスターターキットはもともと NextAuth.js v5 を利用して認証機能を構築していましたが、以下の理由によりカスタム認証ライブラリ「SmartAuth」へ移行しました：
+
+- NextAuth.js v5 が依然として Beta のままであり、安定性・保守性に不安があるため
+- Next.js における最近の重大なセキュリティ問題に対して、NextAuth 側の対応が遅れていたため
+- 認証ロジックをより柔軟かつ明示的にコントロールしたいため
+
+SmartAuth は以下の認証機能に対応しています：
+
+- メール / パスワード認証
+- OAuth 認証（Google / GitHub）対応
+- JWT による stateless なセッション管理
+- ユーザー情報のセッション更新機能
+- ログイン/ログアウト/セッション更新 API ハンドラ
+- データベース連携用 Adapter インターフェース
+- エラーハンドリングおよびセキュリティ対応（CSRF, トークン失効など）
+
+既存の NextAuth.js ベースのコードはすべて置き換わっており、依存関係にも NextAuth.js は含まれていません。
+
 
 ## 使用方法
 
@@ -78,8 +99,7 @@
     NEXT_PUBLIC_SERVER_URL=[アプリケーションのベースURL（デフォルト値: `http://localhost:3000`）]
     DATABASE_URL=[データベースの接続文字列]
 
-    # NextAuth用
-    NEXTAUTH_URL=[ベースURL]
+    # SmartAuth用
     AUTH_SECRET=[ランダムな文字列]
 
     # メール認証を使用する場合、SMTP接続情報の設定が必要
@@ -121,14 +141,15 @@
 │   │   ├── dashboard/          # ダッシュボードページ関連
 │   │   └── profile/            # プロフィールページ関連
 │   ├── action/                 # サーバーアクション
-│   ├── api/                    # APIルート (NextAuthのAPI)
+│   ├── api/                    # APIルート (SmartAuthのAPI)
 │   ├── layout.tsx              
 │   └── ...
 ├── components/                 
 │   ├── auth/                   # 認証関連コンポーネント
 │   ├── ui/                     
 │   └── ...
-├── lib/                        # ユーティリティ関数、設定ファイルなど
+├── lib/                        # ユーティリティ関数、設定ファイル、認証ライブラリ など
+│   ├── smart-auth              # SmartAuth の本体
 │   ├── config.ts               # アプリケーションの設定ファイル
 │   ├── email.ts                # Eメール送信関数等
 │   └── ...                     # その他のユーティリティ
@@ -140,6 +161,7 @@
 ├── .env                        # 環境変数
 ├── next.config.js              # Next.js の設定ファイル
 ├── package.json                # npm の設定ファイル
+├── smartauth.config.js         # SmartAuth の設定ファイル
 ├── tailwind.config.js          # Tailwind CSS の設定ファイル
 ├── tsconfig.json               # TypeScript の設定ファイル
 └── ...                        
@@ -174,7 +196,6 @@ openssl rand -base64 33
 ## 参考URL
 
 *   [Next.js Documentation](https://nextjs.org/docs)
-*   [Auth.js Documentation](https://authjs.dev/)
 *   [Prisma Documentation](https://www.prisma.io/docs)
 
 
