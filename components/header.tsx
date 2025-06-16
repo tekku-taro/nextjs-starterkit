@@ -14,7 +14,6 @@ import { signOutUser } from "@/app/actions/auth.actions"
 import Link from "next/link"
 import { BRAND_NAME } from "@/lib/constants"
 import { useSession } from "@/lib/smart-auth/react"
-// import { useSession } from "next-auth/react"
 
 const Header = () => {  
   const {session} = useSession()

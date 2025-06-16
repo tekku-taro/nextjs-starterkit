@@ -8,8 +8,8 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { updateProfile } from "@/app/actions/profile.actions"
-import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
+import { useSession } from "@/lib/smart-auth/react"
 
 interface UserProfileFormProps {
   user: User & { accounts: Account[] }
@@ -29,8 +29,10 @@ export function UserProfileForm({ user, isOAuth }: UserProfileFormProps) {
         });
         if(state?.data?.name || state?.data?.image) {
           session.update({
-            name: state?.data?.name,
-            image: state?.data?.image,
+            user: {
+              name: state?.data?.name,
+              image: state?.data?.image || undefined,
+            },
             isOAuth: isOAuth
           });
           state.status = ''

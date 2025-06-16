@@ -3,10 +3,13 @@
 import nodemailer from "nodemailer";
 import { FROM_EMAIL, SERVER_URL } from "./constants";
 
+const emailPortEnv = process.env.EMAIL_PORT;
+const portNumber = emailPortEnv ? parseInt(emailPortEnv, 10) : 587;
+
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST,
-  port: process.env.EMAIL_PORT || 587,
-  secure: false, // 465 の場合は true, 587 の場合は false
+  port: portNumber,
+  secure: portNumber === 465, // ポートが465の場合はtrue、それ以外はfalse
   auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS,
@@ -82,4 +85,3 @@ export async function sendPasswordResetEmail({
     }
   });
 }
-

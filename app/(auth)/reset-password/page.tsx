@@ -1,10 +1,11 @@
 import Link from "next/link"
 import { redirect } from "next/navigation"
-import { auth } from "@/auth"
+// import { auth } from "@/auth"
 import { ResetPasswordForm } from "@/components/auth/reset-password-form"
+import { auth } from "@/lib/smart-auth"
 
 export default async function ResetPasswordPage() {
-  const session = await auth()
+  const {session} = await auth()
 
   if (session) {
     redirect("/dashboard")

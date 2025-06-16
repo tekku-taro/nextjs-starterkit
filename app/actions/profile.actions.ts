@@ -2,10 +2,11 @@
 
 import { z } from "zod"
 import { prisma } from "@/prisma"
-import { auth } from "@/auth"
+// import { auth } from "@/auth"
 import { revalidatePath } from "next/cache"
 import bcrypt from "bcryptjs"
 import { redirect } from "next/navigation"
+import { auth } from "@/lib/smart-auth"
 
 // Define the validation schema
 const profileSchema = z.object({
@@ -46,7 +47,7 @@ export type FormState =
 export async function updateProfile(prevState: FormState, formData: FormData) {
   try {
     // Get current session
-    const session = await auth()
+    const {session} = await auth()
     if (!session?.user) {
       return {
         status: 'error',
@@ -149,7 +150,7 @@ export async function updateProfile(prevState: FormState, formData: FormData) {
 }
 
 export async function getLoggedInUser() {
-  const session = await auth()
+  const {session} = await auth()
 
   if (!session?.user?.id) {
     redirect("/login")

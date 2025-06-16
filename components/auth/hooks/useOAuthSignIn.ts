@@ -1,11 +1,9 @@
 import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-// import { signIn } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { signIn } from "@/lib/smart-auth/react";
 
 export function useOAuthSignIn() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
 
@@ -18,7 +16,6 @@ export function useOAuthSignIn() {
     
     try {
       await signIn(provider, { callbackUrl });
-      // router.push(callbackUrl);
     } catch (error) {
       void error;
       toast.error("Something went wrong", {

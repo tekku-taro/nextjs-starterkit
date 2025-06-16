@@ -1,62 +1,13 @@
 // src/index.ts
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
-// import { randomBytes } from 'crypto';
 import * as jose from 'jose';
 import defaultConfig from '../../smartauth.config';
 import { redirect as nextNavigationRedirect } from 'next/navigation';
+import { SERVER_URL } from '../constants';
+import { SmartAuthConfig, User, Session } from '@/types/smart-auth.types';
 
-export interface SmartAuthConfig {
-  providers: {
-    credentials?: {
-      emailField: string;
-      passwordField: string;
-      table: string;
-    };
-    google?: {
-      clientId: string;
-      clientSecret: string;
-    };
-    github?: {
-      clientId: string;
-      clientSecret: string;
-    };
-  };
-  redirects: {
-    default: string;
-    signIn: string;
-    error?: string;
-  };
-  endpoints: {
-    signIn: string;
-    signOut: string;
-    callback: string;
-    csrf: string;
-    updateSession: string;
-  };
-  secret?: string;
-  adapter?: AuthAdapter;
-}
 
-export interface User {
-  id: string;
-  email: string;
-  name?: string;
-  image?: string;
-  role?: string;
-}
-
-export interface Session {
-  user: User;
-  expires: string;
-}
-
-export interface AuthAdapter {
-  getUserByEmail(email: string): Promise<User | null>;
-  createUser(data: any): Promise<User>;
-  verifyUser(email: string, password: string): Promise<User | null>;
-  updateSession(userId: string, data: any): Promise<void>;
-}
 
 export interface AuthResponse {
   session: Session | null;
@@ -70,7 +21,6 @@ class SmartAuth {
   constructor(config: SmartAuthConfig) {
     this.config = config;
     this.secret = config.secret || process.env.AUTH_SECRET || 'default-secret';
-    console.log('SmartAuth initialized with secret:', this.secret); 
   }
 
   public getConfig(): SmartAuthConfig {
@@ -80,32 +30,49 @@ class SmartAuth {
 
   // CSRF Token generation and validation
   generateCSRFToken(): string {
-    // return randomBytes(32).toString('hex');
     const array = new Uint8Array(32);
     crypto.getRandomValues(array);
     return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
 
   }
 
-  validateCSRFToken(token: string, sessionToken?: string): boolean {
-    // Simple validation - in production, you'd want more sophisticated validation
-    return typeof token === 'string' && token.length === 64;
+  validateCSRFToken(submittedToken: string, storedToken?: string): boolean {
+    if (!submittedToken || !storedToken) {
+      // console.warn('CSRF token validation failed: submitted or stored token is missing.');
+      return false;
+    }
+
+    // The generateCSRFToken produces a 64-character hex string.
+    // Validate against this expectation.
+    if (submittedToken.length !== 64 || storedToken.length !== 64) {
+        // console.warn('CSRF token validation failed: token length mismatch or not standard length.');
+        return false;
+    }
+
+    // Basic timing-safe comparison.
+    // Node.js crypto.timingSafeEqual is preferred if available in the environment,
+    // but this is a common manual implementation for environments where it's not.
+    let result = 0;
+    for (let i = 0; i < submittedToken.length; i++) {
+      result |= submittedToken.charCodeAt(i) ^ storedToken.charCodeAt(i);
+    }
+
+    // if (result !== 0) console.warn('CSRF token validation failed: tokens do not match.');
+    return result === 0;
   }
 
   // JWT Token utilities
   async signJWT(payload: Session): Promise<string> {
-    console.log('Signing JWT with secret:', this.secret); 
     const secretKey = new TextEncoder().encode(this.secret);
-    const thirtyDaysInSeconds = 30 * 24 * 60 * 60;
+    const sessionExpires = this.config.sessionExpires;
     return await new jose.SignJWT({ ...payload })
       .setProtectedHeader({ alg: 'HS256' })
       .setIssuedAt()
-      .setExpirationTime(Math.floor(Date.now() / 1000) + thirtyDaysInSeconds)
+      .setExpirationTime(Math.floor(Date.now() / 1000) + sessionExpires)
       .sign(secretKey);
   }
 
   async verifyJWT(token: string): Promise<Session | null> {
-    console.log('Verifying JWT with secret:', this.secret); 
     const secretKey = new TextEncoder().encode(this.secret);
     try {
       const { payload } = await jose.jwtVerify(token, secretKey);
@@ -126,7 +93,7 @@ class SmartAuth {
     // JWTの実際の有効期限はsignJWT内の'exp'クレームによって設定・検証されます。
     const session: Session = {
       user,
-      expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), 
+      expires: new Date(Date.now() + this.config.sessionExpires * 1000).toISOString(), 
     };
     return session;
   }
@@ -134,11 +101,11 @@ class SmartAuth {
   async getSession(): Promise<Session | null> {
     const cookieStore = await cookies();
     const sessionToken = cookieStore.get('smartauth-session-token')?.value;
-    console.log("sessionToken", sessionToken)
+    // console.log("sessionToken", sessionToken)
     if (!sessionToken) return null;
 
     const decodedSession = await this.verifyJWT(sessionToken);
-    console.log("decoded session", decodedSession)
+    // console.log("decoded session", decodedSession)
     if (!decodedSession) return null;
 
     return decodedSession;
@@ -148,7 +115,7 @@ class SmartAuth {
   getGoogleAuthURL(state: string): string {
     const params = new URLSearchParams({
       client_id: this.config.providers.google!.clientId,
-      redirect_uri: `${process.env.SMARTAUTH_URL}${this.config.endpoints.callback}?provider=google`,
+      redirect_uri: `${SERVER_URL}${this.config.endpoints.callback}?provider=google`,
       response_type: 'code',
       scope: 'openid email profile',
       state,
@@ -159,7 +126,7 @@ class SmartAuth {
   getGitHubAuthURL(state: string): string {
     const params = new URLSearchParams({
       client_id: this.config.providers.github!.clientId,
-      redirect_uri: `${process.env.SMARTAUTH_URL}${this.config.endpoints.callback}?provider=github`,
+      redirect_uri: `${SERVER_URL}${this.config.endpoints.callback}?provider=github`,
       scope: 'user:email',
       state,
     });
@@ -178,7 +145,7 @@ class SmartAuth {
           client_secret: this.config.providers.google!.clientSecret,
           code,
           grant_type: 'authorization_code',
-          redirect_uri: `${process.env.SMARTAUTH_URL}${this.config.endpoints.callback}?provider=google`,
+          redirect_uri: `${SERVER_URL}${this.config.endpoints.callback}?provider=google`,
         }),
       });
 
@@ -233,7 +200,7 @@ class SmartAuth {
         headers: { Authorization: `Bearer ${tokens.access_token}` },
       });
       const emails = await emailResponse.json();
-      const primaryEmail = emails.find((email: any) => email.primary)?.email || userData.email;
+      const primaryEmail = emails.find((email: { primary?: boolean; email?: string }) => email.primary)?.email || userData.email;
 
       return {
         id: userData.id.toString(),
@@ -257,32 +224,48 @@ class SmartAuth {
         return NextResponse.redirect(new URL(this.config.redirects.signIn, request.url));
       }
 
-      const formData = await request.formData();
-      const email = formData.get('email') as string;
-      const password = formData.get('password') as string;
-      const csrfToken = formData.get('csrfToken') as string;
-      const redirect = formData.get('redirect') as string;
-      const redirectTo = formData.get('callbackUrl') as string;
+      let payload;
+      try {
+        payload = await request.json();
+      } catch {
+        return NextResponse.json({ message: 'Invalid request body. Expected JSON.' }, { status: 400 });
+      }
 
-      if (!this.validateCSRFToken(csrfToken)) {
-        return NextResponse.redirect(new URL(`${this.config.redirects.error || this.config.redirects.signIn}?error=csrf`, request.url));
+      const {
+        email,
+        password,
+        csrfToken: submittedCsrfToken,
+        redirect = true,
+        redirectTo,
+      } = payload;
+
+      const cookieStore = await cookies();
+      const storedCsrfToken = cookieStore.get('smartauth-csrf-token')?.value;
+
+      if (!this.validateCSRFToken(submittedCsrfToken, storedCsrfToken)) {
+        return NextResponse.json({ message: 'Invalid CSRF token.' }, { status: 403 });
       }
 
       if (!this.config.adapter) {
-        return NextResponse.redirect(new URL(`${this.config.redirects.error || this.config.redirects.signIn}?error=no-adapter`, request.url));
+        console.error('SmartAuth: Adapter not configured.');
+        return NextResponse.json({ message: 'Authentication adapter not configured.' }, { status: 500 });
       }
 
       const user = await this.config.adapter.verifyUser(email, password);
       if (!user) {
-        return NextResponse.redirect(new URL(`${this.config.redirects.error || this.config.redirects.signIn}?error=invalid-credentials`, request.url));
+        return NextResponse.json({ message: 'Invalid email or password.' }, { status: 401 });
       }
 
       const session = await this.createSession(user);
       const sessionToken = await this.signJWT(session);
 
-      let response = null;
-      if (!redirect) {
-        response = NextResponse.json({ session });
+      let response: NextResponse;
+      const finalRedirectUrl = redirectTo || this.config.redirects.default;
+
+      if (redirect === false || redirect === 'false') {
+        // If redirect is explicitly false, return session data
+        // The client-side signIn will handle not redirecting.
+        response = NextResponse.json({ session, url: finalRedirectUrl });
       } else {
         response = NextResponse.redirect(new URL(redirectTo || this.config.redirects.default, request.url));
       }
@@ -291,14 +274,13 @@ class SmartAuth {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
-        maxAge: 30 * 24 * 60 * 60, // 30 days
+        maxAge: this.config.sessionExpires,
       });
 
       return response;
     } else {
       const callbackUrl = url.searchParams.get('callbackUrl') ?? this.config.redirects.default;
       // Handle OAuth sign in
-      // const state = randomBytes(32).toString('hex');
       const array = new Uint8Array(32);
       crypto.getRandomValues(array);
       const state = Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
@@ -379,7 +361,7 @@ class SmartAuth {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 30 * 24 * 60 * 60, // 30 days
+      maxAge: this.config.sessionExpires,
     });
 
     // Clear state cookie
@@ -403,7 +385,7 @@ class SmartAuth {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
-    const data = await request.json();
+    const data: {user: Partial<User>} & Record<string, unknown> = await request.json();
     
     if (this.config.adapter) {
       await this.config.adapter.updateSession(session.user.id, data);
@@ -411,7 +393,9 @@ class SmartAuth {
 
     // セッションデータを更新します。 'data' が Session 型のプロパティ（user, expires）を
     // 上書きする可能性があることに注意してください。意図した更新方法に合わせて調整が必要です。
-    const updatedSessionData = { ...session, ...data } as Session; // 型アサーションを追加
+    const updatedUserData = { ...session.user, ...data.user } as User;
+    const updatedSessionData = { ...session, ...data } as Session;
+    updatedSessionData.user = updatedUserData;
 
     const sessionToken = await this.signJWT(updatedSessionData);
     const response = NextResponse.json({ session: updatedSessionData });
@@ -419,7 +403,7 @@ class SmartAuth {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 30 * 24 * 60 * 60, // 30 days
+      maxAge: this.config.sessionExpires,
     });
 
     return response;
@@ -435,7 +419,10 @@ class SmartAuth {
 }
 
   // Sign In with credentials method for Server Actions
-  export async function signInWithCredentials({email, password, redirect, redirectTo}:{email: string, password: string, redirect?: boolean, redirectTo?: string}): Promise<{ user?: User; error?: string }> {
+  export async function signInWithCredentials(
+    {email, password, redirect, redirectTo, emailVerificationRequired}:
+    {email: string, password: string, redirect?: boolean, redirectTo?: string, emailVerificationRequired?: boolean}): Promise<{ user?: User; error?: string }> 
+  {
     const smartAuth = getSmartAuth();
     const config = smartAuth.getConfig();
   
@@ -443,7 +430,7 @@ class SmartAuth {
       throw new Error('Authentication adapter not configured.');
     }
 
-    const user = await config.adapter.verifyUser(email, password);
+    const user = await config.adapter.verifyUser(email, password, emailVerificationRequired);
     if (!user) {
       throw new Error('Invalid email or password.');
     }
@@ -456,7 +443,7 @@ class SmartAuth {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 30 * 24 * 60 * 60, // 30 days
+      maxAge: config.sessionExpires,
     });
 
     if(redirect) {
@@ -521,32 +508,3 @@ export async function auth(): Promise<AuthResponse> {
   const session = await smartAuth.getSession();
   return { session, user: session?.user };
 }
-
-// Route handlers
-// export async function GET(request: NextRequest) {
-//   const smartAuth = getSmartAuth();
-//   const url = new URL(request.url);
-  
-//   if (url.pathname.includes('/signIn')) {
-//     return smartAuth.handleSignIn(request);
-//   } else if (url.pathname.includes('/callback')) {
-//     return smartAuth.handleCallback(request);
-//   } else if (url.pathname.includes('/signOut')) {
-//     return smartAuth.handleSignOut(request);
-//   }
-  
-//   return NextResponse.json({ error: 'Not found' }, { status: 404 });
-// }
-
-// export async function POST(request: NextRequest) {
-//   const smartAuth = getSmartAuth();
-//   const url = new URL(request.url);
-  
-//   if (url.pathname.includes('/signIn')) {
-//     return smartAuth.handleSignIn(request);
-//   } else if (url.pathname.includes('/updateSession')) {
-//     return smartAuth.handleUpdateSession(request);
-//   }
-  
-//   return NextResponse.json({ error: 'Not found' }, { status: 404 });
-// }

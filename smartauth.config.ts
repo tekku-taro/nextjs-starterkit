@@ -1,7 +1,7 @@
 // smartauth.config.ts
-import { SmartAuthConfig } from './lib/smart-auth';
 import { PrismaAdapter } from './lib/smart-auth/adapters/prisma';
 import { prisma } from './prisma';
+import { SmartAuthConfig } from './types/smart-auth.types';
 
 
 const config: SmartAuthConfig = {
@@ -26,14 +26,16 @@ const config: SmartAuthConfig = {
     // error: '/auth/error',
   },
   endpoints: {
-    signIn: '/api/auth/signin',
-    signOut: '/api/auth/signout',
+    signIn: '/api/auth/signIn',
+    signOut: '/api/auth/signOut',
     callback: '/api/auth/callback',
     csrf: '/api/auth/csrf',
     updateSession: '/api/auth/updateSession',
+    session: '/api/auth/session',
   },
   secret: process.env.AUTH_SECRET,
   adapter: new PrismaAdapter(prisma),
+  sessionExpires: 30 * 24 * 60 * 60, // 30 days
 };
 
 export default config;

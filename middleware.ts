@@ -1,18 +1,7 @@
-// import NextAuth from "next-auth"
-// import authConfig from "./auth.config"
 import { NextRequest, NextResponse } from "next/server"
 import { getSmartAuth } from "./lib/smart-auth"
 
-// Use only one of the two middleware options below
-// 1. Use middleware directly
-// export const { auth: middleware } = NextAuth(authConfig)
- 
-// 2. Wrapped middleware option
-// const { auth } = NextAuth(authConfig)
-// export default auth(async function middleware(request: NextRequest) {
-export async function middleware(request: NextRequest) {  
-  // Your custom middleware logic goes here
-  // const session = await auth()
+export async function middleware(request: NextRequest) {
   const smartAuth = getSmartAuth();
   const session = await smartAuth.getSession();  
   // Define protected routes that require authentication
@@ -25,9 +14,9 @@ export async function middleware(request: NextRequest) {
 
   const isAuthRoute = authRoutes.some((route) => request.nextUrl.pathname === route)
 
-  console.log("session", session)
-  console.log("isProtectedRoute", isProtectedRoute)
-  console.log("isAuthRoute", isAuthRoute)
+  // console.log("session", session)
+  // console.log("isProtectedRoute", isProtectedRoute)
+  // console.log("isAuthRoute", isAuthRoute)
   // Redirect to login if accessing protected route without session
   if (isProtectedRoute && !session) {
     console.log("Redirect to login")
@@ -44,4 +33,3 @@ export async function middleware(request: NextRequest) {
 
   return NextResponse.next()  
 }
-// })

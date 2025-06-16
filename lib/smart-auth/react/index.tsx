@@ -1,7 +1,8 @@
 // src/react/index.tsx
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import smartAuthConfig from '../../../smartauth.config';
+import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 
 export interface User {
   id: string;
@@ -22,15 +23,15 @@ export type SessionStatus = 'loading' | 'authenticated' | 'unauthenticated';
 export interface SessionContextType {
   session: Session | null;
   status: 'loading' | 'authenticated' | 'unauthenticated';
-  update: (data?: any) => Promise<Session | null>;
-  refresh: () => Promise<Session | null>;
+  update: (data?: {user: Partial<User>} & Record<string, unknown>) => Promise<Session | null>;
+  reloadSession: () => Promise<void>;
 }
 
 export const SessionContext = createContext<SessionContextType>({
   session: null,
   status: 'loading',
   update: async () => null,
-  refresh: async () => null,
+  reloadSession: async () => {},
 });
 
 export interface SessionProviderProps {
@@ -41,9 +42,9 @@ export function SessionProvider({ children }: SessionProviderProps) {
   const [session, setSession] = useState<Session | null>(null);
   const [status, setStatus] = useState<SessionStatus>('loading');
 
-  const fetchSession = async (): Promise<Session | null> => {
+  const fetchSession = useCallback(async (): Promise<Session | null> => {
     try {
-      const response = await fetch('/api/auth/session', {
+      const response = await fetch(smartAuthConfig.endpoints.session, {
         credentials: 'include',
       });
       
@@ -55,11 +56,11 @@ export function SessionProvider({ children }: SessionProviderProps) {
     } catch {
       return null;
     }
-  };
+  }, []);
 
-  const updateSession = async (data?: any): Promise<Session | null> => {
+  const updateSession = useCallback(async (data?: {user: Partial<User>} & Record<string, unknown>): Promise<Session | null> => {
     try {
-      const response = await fetch('/api/auth/updateSession', {
+      const response = await fetch(smartAuthConfig.endpoints.updateSession, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -78,9 +79,17 @@ export function SessionProvider({ children }: SessionProviderProps) {
     } catch {
       return null;
     }
-  };
+  }, []);
+
+  const reloadSession = useCallback(async () => {
+    setStatus('loading');
+    const sessionData = await fetchSession();
+    setSession(sessionData);
+    setStatus(sessionData ? 'authenticated' : 'unauthenticated');
+  }, [fetchSession]);
 
   useEffect(() => {
+    // Internal function for initial load and storage event handling within useEffect
     const loadSession = async () => {
       setStatus('loading');
       const sessionData = await fetchSession();
@@ -88,7 +97,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
       setStatus(sessionData ? 'authenticated' : 'unauthenticated');
     };
 
-    loadSession();
+    loadSession(); // Initial load
 
     // Listen for storage events (sign in/out in other tabs)
     const handleStorageChange = () => {
@@ -97,13 +106,13 @@ export function SessionProvider({ children }: SessionProviderProps) {
 
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
+  }, [fetchSession]);
 
   const value: SessionContextType = {
     session,
     status,
     update: updateSession,
-    refresh: fetchSession
+    reloadSession: reloadSession,
   };
 
   return (
@@ -126,64 +135,67 @@ export interface SignInOptions {
   password?: string;
   redirect?: boolean;
   redirectTo?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any;
 }
 
-export async function signIn(provider: string = 'credentials', options: SignInOptions = {}) {
+export interface SignInResponse {
+  ok: boolean;
+  error: string | undefined | null;
+  status?: number;
+  url?: string | null;
+}
+
+export async function signIn(provider: string = 'credentials', options: SignInOptions = {}): Promise<SignInResponse | undefined> {
   if (provider === 'credentials') {
-    // For credentials, we need to handle form submission
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = '/api/auth/signIn';
+    const { email, password, redirect = true, redirectTo, ...customPayloadOptions } = options;
 
-    if (options.email) {
-      const emailInput = document.createElement('input');
-      emailInput.type = 'hidden';
-      emailInput.name = 'email';
-      emailInput.value = options.email;
-      form.appendChild(emailInput);
-    }
-
-    if (options.password) {
-      const passwordInput = document.createElement('input');
-      passwordInput.type = 'hidden';
-      passwordInput.name = 'password';
-      passwordInput.value = options.password;
-      form.appendChild(passwordInput);
-    }
-
-    // Add CSRF token
     const csrfToken = await getCSRFToken();
-    if (csrfToken) {
-      const csrfInput = document.createElement('input');
-      csrfInput.type = 'hidden';
-      csrfInput.name = 'csrfToken';
-      csrfInput.value = csrfToken;
-      form.appendChild(csrfInput);
-    }
 
-    if (options.redirectTo) {
-      const redirectInput = document.createElement('input');
-      redirectInput.type = 'hidden';
-      redirectInput.name = 'redirectTo';
-      redirectInput.value = options.redirectTo;
-      form.appendChild(redirectInput);
-    }
+    const payload = {
+      email,
+      password,
+      csrfToken,
+      redirectTo,
+      ...customPayloadOptions,
+    };
 
-    // Add any other options as hidden fields
-    for (const key in options) {
-      if (options.hasOwnProperty(key) && !['email', 'password', 'redirectTo'].includes(key)) {
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = key;
-        input.value = String(options[key]);
-        form.appendChild(input);
+    try {
+      const response = await fetch(smartAuthConfig.endpoints.signIn, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(payload),
+      });
+
+      // Try to parse JSON, but don't fail if body is empty or not JSON
+      const data = await response.json().catch(() => ({}));
+
+      if (response.ok) {
+        const finalRedirectUrl = redirectTo || data.url || '/'; // Determine redirect URL
+        if (redirect) {
+          window.location.href = finalRedirectUrl;
+          // Note: Code execution might stop here due to navigation.
+          // The promise resolves, but subsequent .then() in caller might not execute.
+          return { ok: true, error: undefined, url: finalRedirectUrl };
+        }
+        // If redirect is false, return success response for caller to handle
+        return { ok: true, error: undefined, url: data.url || response.url };
+      } else {
+        // Authentication failed or other server error
+        return {
+          ok: false,
+          error: data.message || 'Invalid email or password.',
+          status: response.status,
+          url: response.url,
+        };
       }
+    } catch {
+      // Network error or other issues with the fetch call itself
+      return { ok: false, error: 'NetworkError', status: 0, url: null };
     }
-
-    document.body.appendChild(form);
-    form.submit();
-    document.body.removeChild(form);
   } else {
     // For OAuth providers, redirect to sign-in endpoint
     const params = new URLSearchParams({ provider });
@@ -191,11 +203,13 @@ export async function signIn(provider: string = 'credentials', options: SignInOp
       params.set('redirectTo', options.redirectTo);
     }
     for (const key in options) {
-      if (options.hasOwnProperty(key) && !['redirectTo'].includes(key) && options[key] !== undefined) {
+      // Ensure that we are not passing undefined values and only relevant options for OAuth
+      if (options.hasOwnProperty(key) && key !== 'redirectTo' && key !== 'redirect' && options[key] !== undefined) {
         params.set(key, String(options[key]));
       }
     }
-    window.location.href = `/api/auth/signIn?${params}`;
+    window.location.href = `${smartAuthConfig.endpoints.signIn}?${params}`;
+    return undefined;
   }
 }
 
@@ -213,12 +227,12 @@ export async function signOut(options: SignOutOptions = {}) {
     params.set('redirectTo', options.redirectTo);
   }
   
-  window.location.href = `/api/auth/signOut${params.toString() ? `?${params.toString()}` : ''}`;
+  window.location.href = `${smartAuthConfig.endpoints.signOut}${params.toString() ? `?${params.toString()}` : ''}`;
 }
 
 export async function getCSRFToken(): Promise<string | null> {
   try {
-    const response = await fetch('/api/auth/csrf', {
+    const response = await fetch(smartAuthConfig.endpoints.csrf, {
       credentials: 'include',
     });
     
@@ -255,7 +269,7 @@ export function ProtectedRoute({
   fallback = <div>Loading...</div>, 
   redirectTo = '/auth/signin' 
 }: ProtectedRouteProps) {
-  const { session, status } = useSession();
+  const { status } = useSession();
 
   useEffect(() => {
     if (status === 'unauthenticated' && redirectTo) {
@@ -273,116 +287,3 @@ export function ProtectedRoute({
 
   return <>{children}</>;
 }
-
-// Sign In Form Component
-// export interface SignInFormProps {
-//   onSubmit?: (email: string, password: string) => void;
-//   className?: string;
-//   redirectTo?: string;
-// }
-
-// export function SignInForm({ onSubmit, className = '', redirectTo }: SignInFormProps) {
-//   const [email, setEmail] = useState('');
-//   const [password, setPassword] = useState('');
-//   const [loading, setLoading] = useState(false);
-//   const csrfToken = useCSRFToken();
-
-//   const handleSubmit = async (e: React.FormEvent) => {
-//     e.preventDefault();
-//     setLoading(true);
-
-//     try {
-//       if (onSubmit) {
-//         onSubmit(email, password);
-//       } else {
-//         await signIn('credentials', { email, password, redirectTo });
-//       }
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   const handleOAuthSignIn = async (provider: string) => {
-//     setLoading(true);
-//     try {
-//       await signIn(provider, { redirectTo });
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   return (
-//     <div className={`max-w-md mx-auto ${className}`}>
-//       <form onSubmit={handleSubmit} className="space-y-4">
-//         <div>
-//           <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-//             Email
-//           </label>
-//           <input
-//             id="email"
-//             type="email"
-//             value={email}
-//             onChange={(e) => setEmail(e.target.value)}
-//             required
-//             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-//           />
-//         </div>
-        
-//         <div>
-//           <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-//             Password
-//           </label>
-//           <input
-//             id="password"
-//             type="password"
-//             value={password}
-//             onChange={(e) => setPassword(e.target.value)}
-//             required
-//             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-//           />
-//         </div>
-
-//         {csrfToken && (
-//           <input type="hidden" name="csrfToken" value={csrfToken} />
-//         )}
-
-//         <button
-//           type="submit"
-//           disabled={loading}
-//           className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-//         >
-//           {loading ? 'Signing in...' : 'Sign In'}
-//         </button>
-//       </form>
-
-//       <div className="mt-6">
-//         <div className="relative">
-//           <div className="absolute inset-0 flex items-center">
-//             <div className="w-full border-t border-gray-300" />
-//           </div>
-//           <div className="relative flex justify-center text-sm">
-//             <span className="px-2 bg-white text-gray-500">Or continue with</span>
-//           </div>
-//         </div>
-
-//         <div className="mt-6 grid grid-cols-2 gap-3">
-//           <button
-//             onClick={() => handleOAuthSignIn('google')}
-//             disabled={loading}
-//             className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
-//           >
-//             Google
-//           </button>
-          
-//           <button
-//             onClick={() => handleOAuthSignIn('github')}
-//             disabled={loading}
-//             className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
-//           >
-//             GitHub
-//           </button>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }

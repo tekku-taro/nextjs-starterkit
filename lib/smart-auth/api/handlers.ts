@@ -7,27 +7,27 @@ export async function authHandler(
   request: NextRequest,
   { params }: { params: Promise<{ smartauth: string[] }> }
 ): Promise<NextResponse> {
-  console.log('authHandler')
+  // console.log('authHandler')
   const smartAuth = getSmartAuth();
   const {smartauth} = await params;
   const [action] = smartauth;
 
   try {
     switch (action) {
-      case 'signin':
+      case 'signIn':
         return await smartAuth.handleSignIn(request);
       
-      case 'signout':
+      case 'signOut':
         return await smartAuth.handleSignOut(request);
       
       case 'callback':
         return await smartAuth.handleCallback(request);
       
       case 'session':
-        return await handleGetSession(request);
+        return await handleGetSession();
       
       case 'csrf':
-        return await handleGetCSRF(request);
+        return await handleGetCSRF();
       
       case 'updateSession':
         if (request.method === 'POST') {
@@ -50,7 +50,7 @@ export async function authHandler(
 }
 
 // Get current session
-async function handleGetSession(request: NextRequest): Promise<NextResponse> {
+async function handleGetSession(): Promise<NextResponse> {
   const smartAuth = getSmartAuth();
   const session = await smartAuth.getSession();
   
@@ -58,7 +58,7 @@ async function handleGetSession(request: NextRequest): Promise<NextResponse> {
 }
 
 // Get CSRF token
-async function handleGetCSRF(request: NextRequest): Promise<NextResponse> {
+async function handleGetCSRF(): Promise<NextResponse> {
   const smartAuth = getSmartAuth();
   const csrfToken = smartAuth.generateCSRFToken();
   

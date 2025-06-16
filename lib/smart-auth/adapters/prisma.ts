@@ -1,19 +1,12 @@
 // src/adapters/prisma.ts
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
-import { AuthAdapter, User } from '../index';
+import { User, AuthAdapter, CreateUserInput } from '@/types/smart-auth.types';
 
 export interface PrismaAdapterOptions {
   userTable?: string;
 }
 
-export interface CreateUserInput {
-  email: string;
-  name?: string;
-  image?: string;
-  password?: string;
-  role?: string;
-}
 
 export class PrismaAdapter implements AuthAdapter {
   private prisma: PrismaClient;
@@ -26,6 +19,7 @@ export class PrismaAdapter implements AuthAdapter {
 
   async getUserByEmail(email: string): Promise<User | null> {
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const user = await (this.prisma as any)[this.userTable].findUnique({
         where: { email },
       });
@@ -47,7 +41,7 @@ export class PrismaAdapter implements AuthAdapter {
 
   async createUser(data: CreateUserInput): Promise<User> {
     try {
-      const userData: any = {
+      const userData: Prisma.UserCreateInput = {
         email: data.email,
         name: data.name,
         image: data.image,
@@ -58,6 +52,7 @@ export class PrismaAdapter implements AuthAdapter {
         userData.password = await bcrypt.hash(data.password, 12);
       }
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const user = await (this.prisma as any)[this.userTable].create({
         data: userData,
       });
@@ -75,13 +70,21 @@ export class PrismaAdapter implements AuthAdapter {
     }
   }
 
-  async verifyUser(email: string, password: string): Promise<User | null> {
+  async verifyUser(email: string|null, password: string|null, emailVerificationRequired:boolean = false): Promise<User | null> {
     try {
+      if(email == null || password == null) return null;
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const user = await (this.prisma as any)[this.userTable].findUnique({
         where: { email },
       });
 
       if (!user || !user.password) return null;
+
+      // Check if email verification is required and if email is verified
+      if (emailVerificationRequired && !user.emailVerified) {
+        throw new Error('Email not verified');
+      }
 
       const isValid = await bcrypt.compare(password, user.password);
       if (!isValid) return null;
@@ -95,16 +98,20 @@ export class PrismaAdapter implements AuthAdapter {
       };
     } catch (error) {
       console.error('Error verifying user:', error);
+      if(error instanceof Error) {
+        throw error;
+      }
       return null;
     }
   }
 
-  async updateSession(userId: string, data: any): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async updateSession(userId: string, data: {user: Partial<User>} & Record<string, unknown>): Promise<void> {
     try {
-      await (this.prisma as any)[this.userTable].update({
-        where: { id: userId },
-        data: data,
-      });
+      // await (this.prisma as any)[this.userTable].update({
+      //   where: { id: userId },
+      //   data: data,
+      // });
     } catch (error) {
       console.error('Error updating session:', error);
     }
@@ -112,6 +119,7 @@ export class PrismaAdapter implements AuthAdapter {
 
   async getUserById(id: string): Promise<User | null> {
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const user = await (this.prisma as any)[this.userTable].findUnique({
         where: { id },
       });
@@ -133,16 +141,17 @@ export class PrismaAdapter implements AuthAdapter {
 
   async updateUser(id: string, data: Partial<CreateUserInput>): Promise<User | null> {
     try {
-      const updateData: any = {};
+      const updateData: Prisma.UserUpdateInput = {};
       
       if (data.email) updateData.email = data.email;
       if (data.name) updateData.name = data.name;
       if (data.image) updateData.image = data.image;
-      if (data.role) updateData.role = data.role;
+      if (data.role !== undefined) updateData.role = data.role as Prisma.UserUpdateInput['role'];
       if (data.password) {
         updateData.password = await bcrypt.hash(data.password, 12);
       }
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const user = await (this.prisma as any)[this.userTable].update({
         where: { id },
         data: updateData,
@@ -163,6 +172,7 @@ export class PrismaAdapter implements AuthAdapter {
 
   async deleteUser(id: string): Promise<boolean> {
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (this.prisma as any)[this.userTable].delete({
         where: { id },
       });
@@ -184,6 +194,7 @@ export class PrismaAdapter implements AuthAdapter {
   }): Promise<void> {
     try {
       // Assuming you have an Account model
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (this.prisma as any).account.create({
         data: {
           userId,
@@ -205,6 +216,7 @@ export class PrismaAdapter implements AuthAdapter {
     providerAccountId: string
   ): Promise<{ userId: string } | null> {
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const account = await (this.prisma as any).account.findUnique({
         where: {
           provider_providerAccountId: {

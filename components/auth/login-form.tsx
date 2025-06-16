@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { FormEvent, startTransition, useActionState, useEffect } from "react"
+import { FormEvent, startTransition, useActionState, useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Icons } from "@/components/ui/icons"
@@ -11,8 +11,7 @@ import { Label } from "../ui/label"
 import { loginUser } from "@/app/actions/auth.actions"
 import OauthButtons from "./oauth-buttons"
 import { useOAuthSignIn } from "./hooks/useOAuthSignIn"
-import { useSession } from "@/lib/smart-auth/react"
-// import { useSession } from "next-auth/react"
+import { signIn, useSession } from "@/lib/smart-auth/react"
 
 
 export function LoginForm() {
@@ -21,20 +20,22 @@ export function LoginForm() {
   const searchParams = useSearchParams()
   const callbackUrl = searchParams.get("callbackUrl") || "/dashboard"
   const { handleOAuthSignIn, isGoogleLoading, isGithubLoading } = useOAuthSignIn();
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
 
   const [state, action, pending] = useActionState(loginUser, undefined)
+  const [apiPending, setApiPending] = useState(false)
   
   useEffect(() => {
     const handleEffect = async () => {
       // ログイン成功時の処理
       if (state?.status === "success") {
-        toast.success("User logged in.", {
-          // description: "User is logged in successfully.",
-          // description: "Please verify your email address before signing in",
-        });
+        toast.success("User logged in.");
 
+        state.status = "";
         // セッション情報を更新
-        await session.refresh(); 
+        await session.reloadSession();
+        // callbackUrlページにリダイレクト
         router.push(state.callbackUrl || '/dashboard');
       } else if (state?.status === "error" && state?.message) {
         // エラー処理
@@ -47,12 +48,14 @@ export function LoginForm() {
     handleEffect();
   }, [state, router, session])
   
+
   function handleSubmit(event:FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formData = new FormData(event.target as HTMLFormElement);
     startTransition(() => action(formData));
   }
-  
+
+
   return (
     <div className="grid gap-6">
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -63,6 +66,7 @@ export function LoginForm() {
             <Label htmlFor='email'>Email</Label>
             <Input
               id='email'
+              ref={emailRef}
               name='email'
               type='email'
               required
@@ -84,6 +88,7 @@ export function LoginForm() {
             </div>
             <Input
               id='password'
+              ref={passwordRef}
               name='password'
               type='password'
               required
@@ -92,10 +97,35 @@ export function LoginForm() {
             />
             {state?.errors?.password && <p className="text-red-600 text-sm">{state.errors.password}</p>}
           </div>
-          <div>
+          <div className="flex flex-col gap-3">
             <Button type="submit" className="w-full" disabled={pending}>
             {pending && <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />}
-            Sign In
+            Sign In Via ServerAction
+          </Button>
+            <Button type="button" className="w-full" disabled={apiPending} onClick={async() => {
+              setApiPending(true);
+              const res = await signIn('credentials', {
+                email: emailRef.current?.value || '',
+                password: passwordRef.current?.value || '',
+                // redirectTo: callbackUrl,
+                redirect: false,
+              })
+              if(res?.ok) {
+                toast.success("User logged in.");
+
+                await session.reloadSession();
+                // callbackUrlページにリダイレクト
+                router.push(callbackUrl || '/dashboard');                
+              } else if(res?.error) {
+                toast.error("Authentication failed", {
+                  description: res.error,
+                });
+              }
+
+              setApiPending(false)
+            }}>
+            {apiPending && <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />}
+            Sign In Via API
           </Button>
           </div>
 

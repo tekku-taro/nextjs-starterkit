@@ -209,6 +209,7 @@ export async function loginUser(prevState:FormState, formData:FormData) {
       email: email,
       password: password,
       redirect: false,
+      emailVerificationRequired:appConfig.emailVerificationRequired,
     })
 
     const loggedInUser = await prisma.user.findFirst({

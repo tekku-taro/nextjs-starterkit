@@ -12,7 +12,6 @@ import Link from "next/link"
 import OauthButtons from "./oauth-buttons"
 import { useOAuthSignIn } from "./hooks/useOAuthSignIn"
 import { useSession } from "@/lib/smart-auth/react"
-// import { useSession } from "next-auth/react"
 
 
 
@@ -38,14 +37,16 @@ export function RegisterForm() {
       // description: "Please verify your email address before signing in",
     })
     const {data:user} = state;
+    state.status = ''
     session.update({
-      name: user?.name,
-      email: user?.email,
-      role: user?.role,
-      image: user?.image,
+      user: {
+        name: user?.name || undefined,
+        email: user?.email || undefined,
+        role: user?.role || undefined,
+        image: user?.image || undefined,
+      },
       isOAuth: false
     });
-    state.status = ''
     // callbackUrlページにリダイレクト
     router.push(state?.callbackUrl || '/dashboard')
   }

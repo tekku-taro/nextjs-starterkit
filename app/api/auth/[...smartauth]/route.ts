@@ -1,5 +1,5 @@
 import { authHandler } from '@/lib/smart-auth/api/handlers';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 
 // Example API route file structure:
 // app/api/auth/[...smartauth]/route.ts
